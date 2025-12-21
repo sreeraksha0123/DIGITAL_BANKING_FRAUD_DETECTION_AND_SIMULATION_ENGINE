@@ -1,6 +1,6 @@
 # 🏦 Advanced Bank Fraud Detection System
 
-[![Java](https://img.shields.io/badge/Java-23-blue.svg)](https://openjdk.org/)
+[![Java](https://img.shields.io/badge/Java-17-blue.svg)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.1.5-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![MySQL](https://img.shields.io/badge/MySQL-8.0-orange.svg)](https://www.mysql.com/)
 
