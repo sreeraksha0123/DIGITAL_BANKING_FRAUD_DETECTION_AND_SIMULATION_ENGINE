@@ -69,7 +69,6 @@ A **production-grade fraud detection system** with **real-time monitoring dashbo
 - **Detailed Reports** - Success rates, individual test results
 
 ---
-
 ## **🏗️ System Architecture**
 
 ### **Complete System Flow**
@@ -121,6 +120,7 @@ flowchart TD
 ```
 
 ### **Architecture Layers**
+
 ```
 ┌───────────────────────────────────────────────────────────────┐
 │                 REACT DASHBOARD (Frontend)                    │
@@ -152,7 +152,6 @@ flowchart TD
 │ • Scenario test results                                       │
 │                                                               │
 └───────────────────────────────────────────────────────────────┘
-
 ```
 
 ---
@@ -193,52 +192,44 @@ graph TB
     E -->|Export data| TC
 ```
 
----
-
-## 🧠 **Fraud Detection Engine**
+## **🧠 Fraud Detection Engine**
 
 ### **10 Intelligent Detection Rules**
 
-1. **Amount Abuse Detection** - Flags transactions above configurable thresholds
-2. **Withdrawal Risk Analysis** - Higher risk for cash withdrawals
-3. **Failed Transaction Patterns** - Detects multiple failed attempts
-4. **Location Risk Assessment** - Identifies VPN/Tor/Proxy usage
-5. **Timing Pattern Analysis** - Night-time transaction detection
-6. **Velocity Checking** - Rapid transaction frequency analysis
-7. **Amount Anomaly Detection** - Deviation from user's average
-8. **Device Risk Assessment** - New/unrecognized device detection
-9. **IP Risk Analysis** - Suspicious IP address detection
-10. **Geolocation Mismatch** - Unusual location detection
+| # | Rule | Trigger Condition | Points |
+|---|------|-------------------|--------|
+| 1 | **Amount Abuse Detection** | Amount > $100,000 | +60 |
+| 2 | **Withdrawal Risk Analysis** | Transaction type = WITHDRAW | +15 |
+| 3 | **Failed Transaction Patterns** | Multiple failed attempts | +20 |
+| 4 | **Location Risk Assessment** | VPN/Tor/Proxy usage | +25 |
+| 5 | **Timing Pattern Analysis** | Night-time transactions | +20 |
+| 6 | **Velocity Checking** | >10 transactions/hour | +35 |
+| 7 | **Amount Anomaly Detection** | Amount > 3× user average | +15 |
+| 8 | **Device Risk Assessment** | New/unrecognized device | +25 |
+| 9 | **IP Risk Analysis** | Suspicious IP address | +20 |
+| 10 | **Geolocation Mismatch** | Unusual location detection | +30 |
 
 ### **Risk Scoring System**
 
-+-------------+------------+-----------+----------------------------------------------+
-| Score Range | Risk Level | Action    | Description                                  |
-+-------------+------------+-----------+----------------------------------------------+
-| 0 – 29      | 🟢 LOW     | APPROVED  | Normal transaction, auto-approved            |
-| 30 – 59     | 🟡 MEDIUM  | PENDING   | Suspicious, requires manual review           |
-| 60+         | 🔴 HIGH    | BLOCKED   | High fraud probability, auto-blocked         |
-+-------------+------------+-----------+----------------------------------------------+
-
-
----
+| Score Range | Risk Level | Action | Description |
+|-------------|------------|--------|-------------|
+| **0 – 29** | 🟢 **LOW** | ✅ **APPROVED** | Normal transaction, auto-approved |
+| **30 – 59** | 🟡 **MEDIUM** | ⚠️ **PENDING** | Suspicious, requires manual review |
+| **60+** | 🔴 **HIGH** | 🚫 **BLOCKED** | High fraud probability, auto-blocked |
 
 ### **Example: High-Risk Transaction Analysis**
 
-+-------------------+----------------------------+--------+-----------+
-| Rule              | Condition                  | Points | Applied?   |
-+-------------------+----------------------------+--------+-----------+
-| Amount Abuse      | $150,000 > $100,000        | +60    | ✅ YES     |
-| Withdrawal Risk   | Type = WITHDRAW            | +15    | ✅ YES     |
-| Location Risk     | Location = "Unknown"       | +25    | ✅ YES     |
-| Timing Risk       | Time = 3:00 AM             | +20    | ✅ YES     |
-| Velocity Risk     | 2 transactions/hour        | +0     | ❌ NO      |
-+-------------------+----------------------------+--------+-----------+
+| Rule | Condition | Points | Applied? |
+|------|-----------|--------|----------|
+| **Amount Abuse** | $150,000 > $100,000 | +60 | ✅ YES |
+| **Withdrawal Risk** | Type = WITHDRAW | +15 | ✅ YES |
+| **Location Risk** | Location = "Unknown" | +25 | ✅ YES |
+| **Timing Risk** | Time = 3:00 AM | +20 | ✅ YES |
+| **Velocity Risk** | 2 transactions/hour | +0 | ❌ NO |
 
-TOTAL FRAUD SCORE : 120
-RISK LEVEL        : 🔴 HIGH RISK
-ACTION TAKEN     : 🚫 TRANSACTION BLOCKED
-
+**TOTAL FRAUD SCORE**: 120  
+**RISK LEVEL**: 🔴 HIGH RISK  
+**ACTION TAKEN**: 🚫 TRANSACTION BLOCKED  
 
 ---
 
@@ -268,16 +259,13 @@ graph TD
 
 ### **System Performance Dashboard**
 
-+----------------------+---------------+-------------------+
-| Metric               | Value          | Status           |
-+----------------------+---------------+-------------------+
-| Detection Rate       | 100%           | ✅ Excellent     |
-| False Positive Rate  | 1%             | ✅ Excellent     |
-| Response Time        | < 50 ms        | ✅ Excellent     |
-| System Uptime        | 99.95%         | ✅ Excellent     |
-| Blocked Amount       | $7,049,131     | ✅ High Impact   |
-+----------------------+---------------+-------------------+
-
+| Metric | Value | Status |
+|--------|-------|--------|
+| **Detection Rate** | 100% | ✅ Excellent |
+| **False Positive Rate** | 1% | ✅ Excellent |
+| **Response Time** | <50ms | ✅ Excellent |
+| **System Uptime** | 99.95% | ✅ Excellent |
+| **Blocked Amount** | $7,049,131 | ✅ High Impact |
 
 ---
 
@@ -423,51 +411,41 @@ sequenceDiagram
 ```
 
 ### **Available Endpoints**
-+--------+--------------------------------------+--------------------------------------+
-| Type   | Endpoint                              | Purpose                              |
-+--------+--------------------------------------+--------------------------------------+
-| POST   | /api/v1/transactions                  | Analyze single transaction           |
-| GET    | /api/v1/transactions                  | Get all transactions                 |
-| GET    | /api/v1/metrics/summary               | Get system summary                   |
-| GET    | /api/v1/metrics/effectiveness         | Get effectiveness metrics            |
-| POST   | /api/v1/scenarios/run-all             | Run all test scenarios               |
-| GET    | /health                               | Application health check             |
-+--------+--------------------------------------+--------------------------------------+
 
+| Type | Endpoint | Purpose |
+|------|----------|---------|
+| **POST** | `/api/v1/transactions` | Analyze single transaction |
+| **GET** | `/api/v1/transactions` | Get all transactions |
+| **GET** | `/api/v1/metrics/summary` | Get system summary |
+| **GET** | `/api/v1/metrics/effectiveness` | Get effectiveness metrics |
+| **POST** | `/api/v1/scenarios/run-all` | Run all test scenarios |
+| **GET** | `/health` | Health check |
 
 ---
 
 ## **📊 Performance Metrics**
 
 ### **System Performance Dashboard**
-```
-+-------------------------------+----------------------+
-|        PERFORMANCE METRICS    |                      |
-+-------------------------------+----------------------+
-| Avg Response Time             | 45 ms                |
-| P95 Response Time             | 120 ms               |
-| P99 Response Time             | 250 ms               |
-| Throughput                    | 85 txn/sec           |
-| System Uptime                 | 99.95%               |
-| Concurrent Users Supported    | 1000+                |
-+-------------------------------+----------------------+
 
-```
+| Metric | Value |
+|--------|-------|
+| **Avg Response Time** | 45 ms |
+| **P95 Response Time** | 120 ms |
+| **P99 Response Time** | 250 ms |
+| **Throughput** | 85 txn/sec |
+| **System Uptime** | 99.95% |
+| **Concurrent Users Supported** | 1000+ |
 
 ### **Business Impact Dashboard**
-```
-+-------------------------------+----------------------+
-|        BUSINESS IMPACT        |                      |
-+-------------------------------+----------------------+
-| Total Transactions Analyzed   | 345                  |
-| Fraud Detected                | 197 (57.1%)          |
-| High Risk Transactions        | 62                   |
-| Blocked Amount                | $7,049,131           |
-| Prevention Rate               | 100%                 |
-| False Positive Rate           | 1%                   |
-+-------------------------------+----------------------+
 
-```
+| Metric | Value |
+|--------|-------|
+| **Total Transactions Analyzed** | 345 |
+| **Fraud Detected** | 197 (57.1%) |
+| **High Risk Transactions** | 62 |
+| **Blocked Amount** | $7,049,131 |
+| **Prevention Rate** | 100% |
+| **False Positive Rate** | 1% |
 
 ---
 
@@ -486,3 +464,4 @@ sequenceDiagram
 ---
 
 **🏦 Built for Secure Banking | ⚡ Real-Time Fraud Detection | 🏢 Enterprise Ready**
+```
