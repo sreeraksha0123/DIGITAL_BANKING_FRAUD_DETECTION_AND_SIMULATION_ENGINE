@@ -11,12 +11,12 @@ public class Transaction {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Fraud evaluation fields
+    // ================= FRAUD EVALUATION =================
     private Integer fraudScore;
-    private String riskLevel;
+    private String riskLevel;      // LOW, MEDIUM, HIGH
     private String fraudType;
 
-    // Transaction details
+    // ================= TRANSACTION DETAILS =================
     private String accountNumber;
     private Double amount;
     private String currency;
@@ -25,78 +25,118 @@ public class Transaction {
     private String deviceId;
     private String ipAddress;
 
-    // Location details
+    // ================= LOCATION DETAILS =================
     private String location;
     private String country;
     private String city;
 
-    // Timing details
+    // ================= TIMING DETAILS =================
     private LocalDateTime transactionTime;
     private LocalDateTime createdAt;
     private Boolean isNightTime;
 
-    // Behavioral fields
+    // ================= BEHAVIORAL DETAILS =================
     private Boolean successStatus;
     private Integer transactionCountLastHour;
     private Double averageTransactionAmount;
     private Boolean isUnusualLocation;
 
-    // Fraud result
+    // ================= FRAUD RESULT =================
     private Boolean isFraud;
     private String fraudReason;
 
-    // User behavior
+    // ================= USER DETAILS =================
     private Integer userId;
     private String userBehaviorScore;
 
-    // ===== NEW FIELDS FOR APPROVAL STATUS =====
-    private String approvalStatus;         // APPROVED, PENDING_REVIEW, BLOCKED
-    private Boolean transactionApproved;   // true=approved, false=blocked, null=pending
+    // ================= APPROVAL STATUS =================
+    // APPROVED | PENDING | BLOCKED
+    private String approvalStatus;
+
+    // true = approved, false = blocked, null = pending
+    private Boolean transactionApproved;
+
+    // =====================================================
+    // LIFECYCLE CALLBACKS
+    // =====================================================
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        if (transactionTime == null) {
-            transactionTime = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
+
+        if (createdAt == null) {
+            createdAt = now;
         }
+
+        if (transactionTime == null) {
+            transactionTime = now;
+        }
+
+        if (fraudScore == null) {
+            fraudScore = 0;
+        }
+
+        if (riskLevel == null) {
+            riskLevel = "LOW";
+        }
+
+        if (isFraud == null) {
+            isFraud = false;
+        }
+
+        if (fraudReason == null) {
+            fraudReason = "Transaction appears normal";
+        }
+
         isNightTime = transactionTime.getHour() >= 22 || transactionTime.getHour() <= 6;
 
-        // Set approval status based on risk level
-        setApprovalStatusFromRiskLevel();
+        // FINAL authoritative approval mapping
+        applyApprovalFromRisk();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        // Update approval status based on risk level
-        setApprovalStatusFromRiskLevel();
+        applyApprovalFromRisk();
     }
 
-    // ===== Helper method to set approval status based on risk level =====
-    public void setApprovalStatusFromRiskLevel() {
+    // =====================================================
+    // CORE BUSINESS LOGIC
+    // =====================================================
+
+    private void applyApprovalFromRisk() {
         if (riskLevel == null) {
-            return;
+            riskLevel = "LOW";
         }
 
         switch (riskLevel) {
             case "LOW":
-                this.approvalStatus = "APPROVED";
-                this.transactionApproved = true;
+                approvalStatus = "APPROVED";
+                transactionApproved = true;
+                isFraud = false;
                 break;
+
             case "MEDIUM":
-                this.approvalStatus = "PENDING_REVIEW";
-                this.transactionApproved = null;  // null = waiting for review
+                approvalStatus = "PENDING";
+                transactionApproved = null;
+                isFraud = true;
                 break;
+
             case "HIGH":
-                this.approvalStatus = "BLOCKED";
-                this.transactionApproved = false;
+                approvalStatus = "BLOCKED";
+                transactionApproved = false;
+                isFraud = true;
                 break;
+
             default:
-                this.approvalStatus = "UNKNOWN";
-                this.transactionApproved = null;
+                approvalStatus = "PENDING";
+                transactionApproved = null;
+                isFraud = true;
         }
     }
 
-    // ===== Getters & Setters =====
+    // =====================================================
+    // GETTERS & SETTERS
+    // =====================================================
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -107,7 +147,7 @@ public class Transaction {
     public String getRiskLevel() { return riskLevel; }
     public void setRiskLevel(String riskLevel) {
         this.riskLevel = riskLevel;
-        setApprovalStatusFromRiskLevel();
+        applyApprovalFromRisk();
     }
 
     public String getFraudType() { return fraudType; }
@@ -144,9 +184,7 @@ public class Transaction {
     public void setCity(String city) { this.city = city; }
 
     public LocalDateTime getTransactionTime() { return transactionTime; }
-    public void setTransactionTime(LocalDateTime transactionTime) {
-        this.transactionTime = transactionTime;
-    }
+    public void setTransactionTime(LocalDateTime transactionTime) { this.transactionTime = transactionTime; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
@@ -173,7 +211,7 @@ public class Transaction {
     }
 
     public Boolean getIsFraud() { return isFraud; }
-    public void setIsFraud(Boolean fraud) { isFraud = fraud; }
+    public void setIsFraud(Boolean isFraud) { this.isFraud = isFraud; }
 
     public String getFraudReason() { return fraudReason; }
     public void setFraudReason(String fraudReason) { this.fraudReason = fraudReason; }
@@ -187,8 +225,5 @@ public class Transaction {
     }
 
     public String getApprovalStatus() { return approvalStatus; }
-    public void setApprovalStatus(String approvalStatus) { this.approvalStatus = approvalStatus; }
-
     public Boolean getTransactionApproved() { return transactionApproved; }
-    public void setTransactionApproved(Boolean transactionApproved) { this.transactionApproved = transactionApproved; }
 }

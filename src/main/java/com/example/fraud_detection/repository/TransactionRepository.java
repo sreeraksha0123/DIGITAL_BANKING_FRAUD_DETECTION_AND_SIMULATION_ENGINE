@@ -3,7 +3,6 @@ package com.example.fraud_detection.repository;
 import com.example.fraud_detection.entity.Transaction;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -12,39 +11,42 @@ import java.util.List;
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
 
+    /* ================= BASIC QUERIES ================= */
+
     List<Transaction> findByIsFraudTrue();
+
+    long countByIsFraudTrue();
 
     List<Transaction> findByRiskLevel(String riskLevel);
 
-    List<Transaction> findByAccountNumber(String accountNumber);
+    long countByRiskLevel(String riskLevel);
 
-    @Query("SELECT t FROM Transaction t WHERE t.accountNumber = :accountNumber AND t.transactionTime > :time")
-    List<Transaction> findByAccountNumberAndTransactionTimeAfter(
-            @Param("accountNumber") String accountNumber,
-            @Param("time") LocalDateTime time);
+    List<Transaction> findByAccountNumber(String accountNumber);
 
     List<Transaction> findByUserId(Integer userId);
 
-    @Query("SELECT COUNT(t) FROM Transaction t WHERE t.isFraud = true")
-    long countByIsFraudTrue();
+    List<Transaction> findByTransactionTimeAfter(LocalDateTime time);
 
-    @Query("SELECT COUNT(t) FROM Transaction t WHERE t.riskLevel = :riskLevel")
-    long countByRiskLevel(@Param("riskLevel") String riskLevel);
+    List<Transaction> findByAccountNumberAndTransactionTimeAfter(
+            String accountNumber,
+            LocalDateTime time
+    );
 
-    @Query("SELECT AVG(t.fraudScore) FROM Transaction t WHERE t.fraudScore IS NOT NULL")
+    // ✅ REQUIRED for FraudScenarioService (latest transaction)
+    Transaction findTopByAccountNumberOrderByTransactionTimeDesc(String accountNumber);
+
+    /* ================= ANALYTICS QUERIES ================= */
+
+    @Query("SELECT COALESCE(AVG(t.fraudScore), 0) FROM Transaction t")
     Double findAverageFraudScore();
 
-    @Query("SELECT t FROM Transaction t WHERE t.fraudScore > :minScore ORDER BY t.fraudScore DESC")
-    List<Transaction> findHighScoreTransactions(@Param("minScore") int minScore);
+    @Query("""
+           SELECT COALESCE(SUM(t.amount), 0)
+           FROM Transaction t
+           WHERE t.approvalStatus = 'BLOCKED'
+           """)
+    Double sumBlockedAmount();
 
-    @Query("SELECT COUNT(t) FROM Transaction t WHERE t.transactionTime BETWEEN :start AND :end")
-    long countTransactionsBetween(@Param("start") LocalDateTime start,
-                                  @Param("end") LocalDateTime end);
-
-    List<Transaction> findByCountry(String country);
-
-    @Query("SELECT t FROM Transaction t WHERE t.isFraud = false AND t.riskLevel = 'LOW' ORDER BY t.transactionTime DESC")
-    List<Transaction> findLowRiskTransactions();
-
-    boolean existsById(Long id);
+    @Query("SELECT MIN(t.transactionTime) FROM Transaction t")
+    LocalDateTime findOldestTransactionDate();
 }
