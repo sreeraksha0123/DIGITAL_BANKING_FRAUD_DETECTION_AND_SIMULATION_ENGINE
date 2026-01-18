@@ -43,3 +43,64 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Add these to your existing App.css */
+
+/* Notification Bell Styles */
+.notification-wrapper {
+  position: relative;
+}
+
+.badge {
+  background: red;
+  color: white;
+  border-radius: 50%;
+  padding: 2px 6px;
+  font-size: 12px;
+  margin-left: 5px;
+}
+
+.notification-dropdown {
+  position: absolute;
+  right: 0;
+  top: 30px;
+  background: white;
+  border: 1px solid #ccc;
+  width: 300px;
+  padding: 10px;
+  z-index: 100;
+}
+
+.unread {
+  font-weight: bold;
+}
+
+.read {
+  color: gray;
+}
+
+/* Animations for notification bell */
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.notification-bounce {
+  animation: bounce 0.5s ease-in-out;
+}
+
+/* Fade-in animation for dropdown */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-down {
+  animation: fadeInDown 0.2s ease-out;
+}

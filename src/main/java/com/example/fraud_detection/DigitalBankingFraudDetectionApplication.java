@@ -13,7 +13,6 @@ import org.springframework.context.annotation.ComponentScan;
         "com.example.fraud_detection.entity"
 })
 public class DigitalBankingFraudDetectionApplication {
-
     public static void main(String[] args) {
         SpringApplication.run(DigitalBankingFraudDetectionApplication.class, args);
     }

@@ -2,9 +2,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Search, Filter, Eye, EyeOff, AlertCircle, CheckCircle, Clock,
   RefreshCw, Bell, Download, Activity, Shield, TrendingUp, AlertTriangle,
-  BarChart3, CreditCard, MapPin, User, Server, Database, PlayCircle, XCircle, Clock as ClockIcon
+  BarChart3, CreditCard, MapPin, User, Server, Database, PlayCircle, XCircle,
+  Clock as ClockIcon, Plus, X
 } from 'lucide-react';
-import { getAllTransactions, getMetricsSummary, getRuleBreakdown, getSystemEffectiveness, runFraudScenarios } from '../services/api';
+import {
+  getAllTransactions,
+  getMetricsSummary,
+  getRuleBreakdown,
+  getSystemEffectiveness,
+  runFraudScenarios,
+  createTransaction,
+  getNotifications,
+  markNotificationsAsRead
+} from '../services/api';
 
 export default function Dashboard() {
   const [transactions, setTransactions] = useState([]);
@@ -15,7 +25,25 @@ export default function Dashboard() {
   const [sortBy, setSortBy] = useState('latest');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [showAlerts, setShowAlerts] = useState(true);
-  const [activeTab, setActiveTab] = useState('transactions'); // New state for tabs
+  const [activeTab, setActiveTab] = useState('transactions');
+
+  // NOTIFICATION STATES
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  // ADD TRANSACTION STATES
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newTransaction, setNewTransaction] = useState({
+    accountNumber: '',
+    transactionType: 'TRANSFER',
+    amount: '',
+    location: '',
+    country: 'USA',
+    city: 'Unknown'
+  });
+  const [addingTransaction, setAddingTransaction] = useState(false);
+
   const autoRefreshIntervalRef = useRef(null);
 
   // New states for metrics
@@ -32,12 +60,85 @@ export default function Dashboard() {
   });
   const [expandedRow, setExpandedRow] = useState(null);
 
+  // Fetch notifications
+  const fetchNotifications = async () => {
+    try {
+      const data = await getNotifications();
+      setNotifications(data);
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+    }
+  };
+
+  // Mark all notifications as read
+  const markAllRead = async () => {
+    try {
+      await markNotificationsAsRead();
+      fetchNotifications();
+    } catch (error) {
+      console.error("Failed to mark notifications as read:", error);
+    }
+  };
+
+  // Add new transaction
+  const handleAddTransaction = async () => {
+    if (!newTransaction.accountNumber || !newTransaction.amount || !newTransaction.location) {
+      setError("Please fill in all required fields: Account, Amount, and Location");
+      return;
+    }
+
+    try {
+      setAddingTransaction(true);
+      setError(null);
+
+      // Prepare transaction data
+      const transactionData = {
+        accountNumber: newTransaction.accountNumber,
+        transactionType: newTransaction.transactionType,
+        amount: parseFloat(newTransaction.amount),
+        location: newTransaction.location,
+        country: newTransaction.country || "USA",
+        city: newTransaction.city || "Unknown"
+      };
+
+      console.log("Sending transaction data:", transactionData);
+
+      // Call API to create transaction
+      const result = await createTransaction(transactionData);
+      console.log("Transaction created successfully:", result);
+
+      // Reset form
+      setNewTransaction({
+        accountNumber: '',
+        transactionType: 'TRANSFER',
+        amount: '',
+        location: '',
+        country: 'USA',
+        city: 'Unknown'
+      });
+      setShowAddModal(false);
+
+      // Refresh data
+      await fetchTransactions();
+      await fetchNotifications();
+
+      // Show success message
+      alert("Transaction added successfully!");
+    } catch (error) {
+      console.error("Error adding transaction:", error);
+      setError(`Failed to add transaction: ${error.response?.data?.message || error.message}`);
+    } finally {
+      setAddingTransaction(false);
+    }
+  };
+
   // Fetch transactions
   const fetchTransactions = async () => {
     try {
       setLoading(true);
       setError(null);
       const data = await getAllTransactions();
+
       const transactionList = Array.isArray(data) ? data : (data ? [data] : []);
 
       const newHighRisk = transactionList.filter(t => t.riskLevel === 'HIGH');
@@ -113,6 +214,13 @@ export default function Dashboard() {
   useEffect(() => {
     fetchTransactions();
     fetchMetrics();
+    fetchNotifications();
+  }, []);
+
+  // Set up notification polling
+  useEffect(() => {
+    const notificationInterval = setInterval(fetchNotifications, 5000);
+    return () => clearInterval(notificationInterval);
   }, []);
 
   // Auto-refresh
@@ -235,13 +343,6 @@ export default function Dashboard() {
     }
   };
 
-  const stats = {
-    total: transactions.length,
-    fraud: transactions.filter(t => t.isFraud).length,
-    pending: transactions.filter(t => t.approvalStatus === 'PENDING').length,
-    highRisk: transactions.filter(t => t.riskLevel === 'HIGH').length
-  };
-
   const styles = {
     container: {
       minHeight: '100vh',
@@ -304,6 +405,247 @@ export default function Dashboard() {
       maxWidth: '1280px',
       margin: '0 auto',
       padding: '2rem 1.5rem',
+    },
+    // Modal Styles
+    modalOverlay: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000,
+      animation: 'fadeIn 0.3s ease-in-out',
+    },
+    modalContent: {
+      backgroundColor: 'white',
+      padding: '2rem',
+      borderRadius: '0.5rem',
+      width: '90%',
+      maxWidth: '500px',
+      maxHeight: '90vh',
+      overflowY: 'auto',
+      boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+    },
+    modalHeader: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: '1.5rem',
+      paddingBottom: '1rem',
+      borderBottom: '1px solid #e5e7eb',
+    },
+    modalTitle: {
+      fontSize: '1.25rem',
+      fontWeight: 600,
+      color: '#1f2937',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.5rem',
+    },
+    formGroup: {
+      marginBottom: '1rem',
+    },
+    formLabel: {
+      display: 'block',
+      marginBottom: '0.5rem',
+      fontWeight: 500,
+      color: '#374151',
+      fontSize: '0.875rem',
+    },
+    formInput: {
+      width: '100%',
+      padding: '0.625rem',
+      border: '1px solid #d1d5db',
+      borderRadius: '0.375rem',
+      fontSize: '0.875rem',
+      boxSizing: 'border-box',
+    },
+    formSelect: {
+      width: '100%',
+      padding: '0.625rem',
+      border: '1px solid #d1d5db',
+      borderRadius: '0.375rem',
+      fontSize: '0.875rem',
+      backgroundColor: 'white',
+      cursor: 'pointer',
+    },
+    required: {
+      color: '#dc2626',
+      marginLeft: '0.25rem',
+    },
+    modalActions: {
+      display: 'flex',
+      gap: '1rem',
+      marginTop: '1.5rem',
+    },
+    // Button styles
+    btn: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.5rem',
+      padding: '0.5rem 0.75rem',
+      fontSize: '0.875rem',
+      border: '1px solid #e2e8f0',
+      borderRadius: '0.375rem',
+      backgroundColor: '#ffffff',
+      color: '#475569',
+      cursor: 'pointer',
+      transition: 'all 0.15s ease',
+    },
+    btnPrimary: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.5rem',
+      padding: '0.5rem 0.75rem',
+      fontSize: '0.875rem',
+      border: '1px solid #3b82f6',
+      borderRadius: '0.375rem',
+      backgroundColor: '#3b82f6',
+      color: '#ffffff',
+      cursor: 'pointer',
+      transition: 'all 0.15s ease',
+      fontWeight: 500,
+    },
+    btnSuccess: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.5rem',
+      padding: '0.5rem 0.75rem',
+      fontSize: '0.875rem',
+      border: '1px solid #10b981',
+      borderRadius: '0.375rem',
+      backgroundColor: '#10b981',
+      color: '#ffffff',
+      cursor: 'pointer',
+      transition: 'all 0.15s ease',
+      fontWeight: 500,
+    },
+    toggleBtn: (active) => ({
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.5rem',
+      padding: '0.5rem 0.75rem',
+      fontSize: '0.875rem',
+      border: '1px solid',
+      borderColor: active ? '#3b82f6' : '#e2e8f0',
+      borderRadius: '0.375rem',
+      backgroundColor: active ? '#eff6ff' : '#ffffff',
+      color: active ? '#1d4ed8' : '#475569',
+      cursor: 'pointer',
+      transition: 'all 0.15s ease',
+    }),
+    // Notification Styles
+    notificationWrapper: {
+      position: 'relative',
+    },
+    notificationButton: {
+      background: 'none',
+      border: 'none',
+      cursor: 'pointer',
+      position: 'relative',
+      padding: '0.5rem',
+      borderRadius: '0.375rem',
+      backgroundColor: unreadCount > 0 ? '#fef2f2' : '#f8fafc',
+      transition: 'all 0.2s',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    notificationBadge: {
+      position: 'absolute',
+      top: '-4px',
+      right: '-4px',
+      background: '#dc2626',
+      color: 'white',
+      borderRadius: '50%',
+      padding: '2px 6px',
+      fontSize: '12px',
+      fontWeight: 'bold',
+      minWidth: '20px',
+      height: '20px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+    },
+    notificationDropdown: {
+      position: 'absolute',
+      right: 0,
+      top: '40px',
+      background: 'white',
+      border: '1px solid #ccc',
+      width: '320px',
+      maxHeight: '400px',
+      overflowY: 'auto',
+      padding: '0',
+      zIndex: 1000,
+      borderRadius: '0.5rem',
+      boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
+    },
+    notificationHeader: {
+      padding: '1rem',
+      borderBottom: '1px solid #e2e8f0',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backgroundColor: '#f8fafc',
+      borderRadius: '0.5rem 0.5rem 0 0',
+    },
+    notificationTitle: {
+      fontWeight: 600,
+      color: '#1e293b',
+      fontSize: '0.875rem',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.5rem',
+    },
+    markReadButton: {
+      background: 'none',
+      border: '1px solid #3b82f6',
+      color: '#3b82f6',
+      padding: '0.25rem 0.75rem',
+      borderRadius: '0.375rem',
+      fontSize: '0.75rem',
+      cursor: 'pointer',
+      transition: 'all 0.2s',
+    },
+    notificationList: {
+      padding: '0',
+    },
+    notificationItem: {
+      padding: '0.875rem 1rem',
+      borderBottom: '1px solid #f1f5f9',
+      cursor: 'pointer',
+      transition: 'background-color 0.2s',
+      fontSize: '0.875rem',
+    },
+    unreadNotification: {
+      backgroundColor: '#eff6ff',
+      fontWeight: 500,
+      color: '#1e293b',
+    },
+    readNotification: {
+      backgroundColor: '#ffffff',
+      color: '#64748b',
+    },
+    notificationMessage: {
+      margin: 0,
+      lineHeight: 1.5,
+    },
+    notificationTime: {
+      fontSize: '0.75rem',
+      color: '#94a3b8',
+      marginTop: '0.25rem',
+    },
+    noNotifications: {
+      padding: '2rem 1rem',
+      textAlign: 'center',
+      color: '#94a3b8',
+      fontSize: '0.875rem',
     },
     // Tab Navigation
     tabNavigation: {
@@ -404,46 +746,6 @@ export default function Dashboard() {
       display: 'flex',
       gap: '0.5rem',
     },
-    btn: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.5rem',
-      padding: '0.5rem 0.75rem',
-      fontSize: '0.875rem',
-      border: '1px solid #e2e8f0',
-      borderRadius: '0.375rem',
-      backgroundColor: '#ffffff',
-      color: '#475569',
-      cursor: 'pointer',
-      transition: 'all 0.15s ease',
-    },
-    btnPrimary: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.5rem',
-      padding: '0.5rem 0.75rem',
-      fontSize: '0.875rem',
-      border: '1px solid #3b82f6',
-      borderRadius: '0.375rem',
-      backgroundColor: '#3b82f6',
-      color: '#ffffff',
-      cursor: 'pointer',
-      transition: 'all 0.15s ease',
-    },
-    toggleBtn: (active) => ({
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.5rem',
-      padding: '0.5rem 0.75rem',
-      fontSize: '0.875rem',
-      border: '1px solid',
-      borderColor: active ? '#3b82f6' : '#e2e8f0',
-      borderRadius: '0.375rem',
-      backgroundColor: active ? '#eff6ff' : '#ffffff',
-      color: active ? '#1d4ed8' : '#475569',
-      cursor: 'pointer',
-      transition: 'all 0.15s ease',
-    }),
     searchBox: {
       position: 'relative',
       marginBottom: '1.5rem',
@@ -778,7 +1080,7 @@ export default function Dashboard() {
             onClick={runAllScenarios}
             disabled={scenarioLoading}
             style={{
-              ...styles.btnPrimary,
+              ...styles.btnSuccess,
               backgroundColor: scenarioLoading ? '#94a3b8' : '#10b981'
             }}
           >
@@ -933,6 +1235,74 @@ export default function Dashboard() {
               <Activity size={16} />
               {autoRefresh ? 'Live Monitoring' : 'Manual Refresh'}
             </div>
+
+            {/* NOTIFICATION BELL */}
+            <div style={styles.notificationWrapper}>
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                style={styles.notificationButton}
+                title="Notifications"
+              >
+                <Bell size={20} color={unreadCount > 0 ? "#dc2626" : "#64748b"} />
+                {unreadCount > 0 && (
+                  <span style={styles.notificationBadge}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {showNotifications && (
+                <div style={styles.notificationDropdown}>
+                  <div style={styles.notificationHeader}>
+                    <div style={styles.notificationTitle}>
+                      <Bell size={16} />
+                      Notifications ({notifications.length})
+                    </div>
+                    {notifications.length > 0 && (
+                      <button
+                        onClick={markAllRead}
+                        style={styles.markReadButton}
+                        onMouseEnter={(e) => e.target.style.backgroundColor = '#eff6ff'}
+                        onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                      >
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+
+                  <div style={styles.notificationList}>
+                    {notifications.length === 0 ? (
+                      <div style={styles.noNotifications}>
+                        No notifications
+                      </div>
+                    ) : (
+                      notifications.map((notification, index) => (
+                        <div
+                          key={index}
+                          style={{
+                            ...styles.notificationItem,
+                            ...(notification.read ? styles.readNotification : styles.unreadNotification)
+                          }}
+                          onClick={() => {
+                            // You could add logic to mark individual notification as read
+                          }}
+                        >
+                          <p style={styles.notificationMessage}>
+                            {notification.message}
+                          </p>
+                          <div style={styles.notificationTime}>
+                            {new Date(notification.time).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -1020,6 +1390,151 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Add Transaction Modal */}
+        {showAddModal && (
+          <div style={styles.modalOverlay} onClick={() => setShowAddModal(false)}>
+            <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+              <div style={styles.modalHeader}>
+                <h2 style={styles.modalTitle}>
+                  <Plus size={18} />
+                  Add New Transaction
+                </h2>
+                <button
+                  onClick={() => setShowAddModal(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '1.5rem',
+                    color: '#6b7280'
+                  }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>
+                  Account Number
+                  <span style={styles.required}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newTransaction.accountNumber}
+                  onChange={(e) => setNewTransaction({...newTransaction, accountNumber: e.target.value})}
+                  style={styles.formInput}
+                  placeholder="e.g., ACC001"
+                  required
+                />
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>
+                  Transaction Type
+                  <span style={styles.required}>*</span>
+                </label>
+                <select
+                  value={newTransaction.transactionType}
+                  onChange={(e) => setNewTransaction({...newTransaction, transactionType: e.target.value})}
+                  style={styles.formSelect}
+                >
+                  <option value="TRANSFER">Transfer</option>
+                  <option value="PURCHASE">Purchase</option>
+                  <option value="WITHDRAWAL">Withdrawal</option>
+                  <option value="DEPOSIT">Deposit</option>
+                </select>
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>
+                  Amount ($)
+                  <span style={styles.required}>*</span>
+                </label>
+                <input
+                  type="number"
+                  value={newTransaction.amount}
+                  onChange={(e) => setNewTransaction({...newTransaction, amount: e.target.value})}
+                  style={styles.formInput}
+                  placeholder="e.g., 1500.00"
+                  step="0.01"
+                  min="0"
+                  required
+                />
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>
+                  Location
+                  <span style={styles.required}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newTransaction.location}
+                  onChange={(e) => setNewTransaction({...newTransaction, location: e.target.value})}
+                  style={styles.formInput}
+                  placeholder="e.g., New York"
+                  required
+                />
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Country</label>
+                <input
+                  type="text"
+                  value={newTransaction.country}
+                  onChange={(e) => setNewTransaction({...newTransaction, country: e.target.value})}
+                  style={styles.formInput}
+                  placeholder="e.g., USA"
+                />
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>City</label>
+                <input
+                  type="text"
+                  value={newTransaction.city}
+                  onChange={(e) => setNewTransaction({...newTransaction, city: e.target.value})}
+                  style={styles.formInput}
+                  placeholder="e.g., NYC"
+                />
+              </div>
+
+              <div style={styles.modalActions}>
+                <button
+                  onClick={handleAddTransaction}
+                  disabled={addingTransaction}
+                  style={{
+                    ...styles.btnSuccess,
+                    flex: 1,
+                    backgroundColor: addingTransaction ? '#94a3b8' : '#10b981'
+                  }}
+                >
+                  {addingTransaction ? (
+                    <>
+                      <ClockIcon size={16} className="animate-spin" />
+                      Adding...
+                    </>
+                  ) : (
+                    <>
+                      <Plus size={16} />
+                      Add Transaction
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => setShowAddModal(false)}
+                  style={{
+                    ...styles.btn,
+                    flex: 1
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Transactions Tab Content */}
         {activeTab === 'transactions' && (
           <>
@@ -1031,22 +1546,17 @@ export default function Dashboard() {
                   Filters & Controls
                 </h2>
                 <div style={styles.buttonGroup}>
+                  {/* Add Transaction Button */}
                   <button
-                    style={styles.toggleBtn(autoRefresh)}
-                    onClick={() => setAutoRefresh(!autoRefresh)}
-                    title={autoRefresh ? 'Pause auto-refresh' : 'Enable auto-refresh'}
+                    onClick={() => setShowAddModal(true)}
+                    style={styles.btnSuccess}
+                    title="Add New Transaction"
                   >
-                    <RefreshCw size={16} />
-                    {autoRefresh ? 'Auto Refresh' : 'Manual'}
+                    <Plus size={16} />
+                    Add Transaction
                   </button>
-                  <button
-                    style={styles.toggleBtn(showAlerts)}
-                    onClick={() => setShowAlerts(!showAlerts)}
-                    title={showAlerts ? 'Disable alerts' : 'Enable alerts'}
-                  >
-                    <Bell size={16} />
-                    Alerts
-                  </button>
+
+                  {/* Export Button */}
                   <button
                     style={styles.btn}
                     onClick={exportToCSV}
@@ -1055,6 +1565,28 @@ export default function Dashboard() {
                     <Download size={16} />
                     Export
                   </button>
+
+                  {/* Auto Refresh Toggle */}
+                  <button
+                    style={styles.toggleBtn(autoRefresh)}
+                    onClick={() => setAutoRefresh(!autoRefresh)}
+                    title={autoRefresh ? 'Pause auto-refresh' : 'Enable auto-refresh'}
+                  >
+                    <RefreshCw size={16} />
+                    {autoRefresh ? 'Auto Refresh' : 'Manual'}
+                  </button>
+
+                  {/* Alerts Toggle */}
+                  <button
+                    style={styles.toggleBtn(showAlerts)}
+                    onClick={() => setShowAlerts(!showAlerts)}
+                    title={showAlerts ? 'Disable alerts' : 'Enable alerts'}
+                  >
+                    <Bell size={16} />
+                    Alerts
+                  </button>
+
+                  {/* Manual Refresh */}
                   <button
                     style={styles.btn}
                     onClick={fetchTransactions}

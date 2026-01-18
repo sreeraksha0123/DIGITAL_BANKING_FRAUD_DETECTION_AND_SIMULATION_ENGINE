@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 // Configure API Base URL
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/fraud-detection/api/v1';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8081/fraud-detection/api/v1';
 
 // Create axios instance
 const api = axios.create({
@@ -114,24 +114,13 @@ export const getTransactionStats = async () => {
   }
 };
 
-// ✅ POST new transaction (single)
+// ✅ POST new transaction (single) - FIXED PATH
 export const createTransaction = async (transactionData) => {
   try {
     const response = await api.post('/transactions', transactionData);
     return response.data;
   } catch (error) {
     console.error('Error creating transaction:', error);
-    throw error;
-  }
-};
-
-// ✅ POST batch transactions
-export const createBatchTransactions = async (transactionsArray) => {
-  try {
-    const response = await api.post('/transactions/batch', transactionsArray);
-    return response.data;
-  } catch (error) {
-    console.error('Error creating batch transactions:', error);
     throw error;
   }
 };
@@ -235,61 +224,6 @@ export const runFraudScenarios = async () => {
   }
 };
 
-// ✅ POST test high value scenario
-export const testHighValueScenario = async () => {
-  try {
-    const response = await api.post('/scenarios/high-value');
-    return response.data;
-  } catch (error) {
-    console.error('Error testing high value scenario:', error);
-    throw error;
-  }
-};
-
-// ✅ POST test rapid transactions scenario
-export const testRapidTransactionsScenario = async () => {
-  try {
-    const response = await api.post('/scenarios/rapid-transactions');
-    return response.data;
-  } catch (error) {
-    console.error('Error testing rapid transactions scenario:', error);
-    throw error;
-  }
-};
-
-// ✅ POST test location mismatch scenario
-export const testLocationMismatchScenario = async () => {
-  try {
-    const response = await api.post('/scenarios/location-mismatch');
-    return response.data;
-  } catch (error) {
-    console.error('Error testing location mismatch scenario:', error);
-    throw error;
-  }
-};
-
-// ✅ POST test suspicious merchant scenario
-export const testSuspiciousMerchantScenario = async () => {
-  try {
-    const response = await api.post('/scenarios/suspicious-merchant');
-    return response.data;
-  } catch (error) {
-    console.error('Error testing suspicious merchant scenario:', error);
-    throw error;
-  }
-};
-
-// ✅ POST test odd hours scenario
-export const testOddHoursScenario = async () => {
-  try {
-    const response = await api.post('/scenarios/odd-hours');
-    return response.data;
-  } catch (error) {
-    console.error('Error testing odd hours scenario:', error);
-    throw error;
-  }
-};
-
 // ✅ GET scenario test results
 export const getScenarioResults = async () => {
   try {
@@ -297,6 +231,28 @@ export const getScenarioResults = async () => {
     return response.data;
   } catch (error) {
     console.error('Error fetching scenario results:', error);
+    throw error;
+  }
+};
+
+// ✅ GET notifications
+export const getNotifications = async () => {
+  try {
+    const response = await api.get('/notifications');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    throw error;
+  }
+};
+
+// ✅ POST mark notifications as read
+export const markNotificationsAsRead = async () => {
+  try {
+    const response = await api.post('/notifications/mark-read');
+    return response.data;
+  } catch (error) {
+    console.error('Error marking notifications as read:', error);
     throw error;
   }
 };
