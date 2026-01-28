@@ -1,6 +1,7 @@
 package com.example.fraud_detection.controller;
 
 import com.example.fraud_detection.service.NotificationService;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -8,6 +9,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/notifications")
 @CrossOrigin
+@Profile("dev")
 public class NotificationController {
 
     private final NotificationService service;

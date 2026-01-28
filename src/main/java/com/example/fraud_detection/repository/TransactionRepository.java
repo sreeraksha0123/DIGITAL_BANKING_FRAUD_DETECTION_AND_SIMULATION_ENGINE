@@ -5,48 +5,43 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
 
-    /* ================= BASIC QUERIES ================= */
-
-    List<Transaction> findByIsFraudTrue();
+    // =========================
+    // BASIC COUNTS
+    // =========================
 
     long countByIsFraudTrue();
 
-    List<Transaction> findByRiskLevel(String riskLevel);
+    long countByApprovalStatus(String approvalStatus);
 
-    long countByRiskLevel(String riskLevel);
-
-    List<Transaction> findByAccountNumber(String accountNumber);
-
-    List<Transaction> findByUserId(Integer userId);
-
-    List<Transaction> findByTransactionTimeAfter(LocalDateTime time);
-
-    List<Transaction> findByAccountNumberAndTransactionTimeAfter(
-            String accountNumber,
-            LocalDateTime time
-    );
-
-    // ✅ REQUIRED for FraudScenarioService (latest transaction)
-    Transaction findTopByAccountNumberOrderByTransactionTimeDesc(String accountNumber);
-
-    /* ================= ANALYTICS QUERIES ================= */
-
-    @Query("SELECT COALESCE(AVG(t.fraudScore), 0) FROM Transaction t")
-    Double findAverageFraudScore();
+    // =========================
+    // AGGREGATES
+    // =========================
 
     @Query("""
-           SELECT COALESCE(SUM(t.amount), 0)
-           FROM Transaction t
-           WHERE t.approvalStatus = 'BLOCKED'
-           """)
-    Double sumBlockedAmount();
+        SELECT COALESCE(SUM(t.amount), 0)
+        FROM Transaction t
+        WHERE t.approvalStatus = 'BLOCKED'
+    """)
+    Double getTotalBlockedAmount();
 
-    @Query("SELECT MIN(t.transactionTime) FROM Transaction t")
-    LocalDateTime findOldestTransactionDate();
+    @Query("""
+        SELECT COALESCE(AVG(t.fraudScore), 0)
+        FROM Transaction t
+        WHERE t.fraudScore IS NOT NULL
+    """)
+    Double getAverageFraudScore();
+
+    // =========================
+    // DASHBOARD HELPERS
+    // =========================
+
+    @Query("""
+        SELECT COUNT(t)
+        FROM Transaction t
+        WHERE t.riskLevel = 'HIGH'
+    """)
+    long countHighRiskTransactions();
 }

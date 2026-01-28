@@ -1,260 +1,130 @@
 // services/api.js
-import axios from 'axios';
+import axios from "axios";
 
-// Configure API Base URL
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8081/fraud-detection/api/v1';
+/**
+ * =====================================================
+ * API CONFIGURATION
+ * =====================================================
+ */
 
-// Create axios instance
+// Base URL (env first, fallback for local dev)
+const API_BASE_URL =
+  process.env.REACT_APP_API_URL ||
+  "http://localhost:8081/fraud-detection/api/v1";
+
+// Axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
   timeout: 10000,
 });
 
-// Add request interceptor
+/**
+ * =====================================================
+ * INTERCEPTORS (LOGGING ONLY)
+ * =====================================================
+ */
+
+// Request interceptor
 api.interceptors.request.use(
   (config) => {
-    console.log('📤 API Request:', config.method.toUpperCase(), config.url);
+    console.log(
+      "📤 API Request:",
+      config.method?.toUpperCase(),
+      config.url
+    );
     return config;
   },
   (error) => {
-    console.error('❌ Request Error:', error);
+    console.error("❌ Request Error:", error);
     return Promise.reject(error);
   }
 );
 
-// Add response interceptor
+// Response interceptor
 api.interceptors.response.use(
   (response) => {
-    console.log('✅ API Response:', response.status, response.data);
+    console.log("✅ API Response:", response.status, response.data);
     return response;
   },
   (error) => {
-    console.error('❌ Response Error:', error.response?.status, error.message);
+    console.error(
+      "❌ API Response Error:",
+      error.response?.status,
+      error.message
+    );
     return Promise.reject(error);
   }
 );
 
-// ✅ GET all transactions
+/**
+ * =====================================================
+ * TRANSACTIONS (READ + CREATE)
+ * =====================================================
+ */
+
+/**
+ * Get all transactions
+ * Backend already includes fraud, risk, approval info
+ */
 export const getAllTransactions = async () => {
-  try {
-    const response = await api.get('/transactions');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching transactions:', error);
-    throw error;
-  }
+  const response = await api.get("/transactions");
+  return response.data;
 };
 
-// ✅ GET single transaction by ID
-export const getTransactionById = async (id) => {
-  try {
-    const response = await api.get(`/transactions/${id}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching transaction:', error);
-    throw error;
-  }
-};
-
-// ✅ GET all fraudulent transactions
-export const getFraudulentTransactions = async () => {
-  try {
-    const response = await api.get('/transactions/fraud/all');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching fraudulent transactions:', error);
-    throw error;
-  }
-};
-
-// ✅ GET HIGH risk transactions
-export const getHighRiskTransactions = async () => {
-  try {
-    const response = await api.get('/transactions/risk/high');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching high risk transactions:', error);
-    throw error;
-  }
-};
-
-// ✅ GET MEDIUM risk transactions
-export const getMediumRiskTransactions = async () => {
-  try {
-    const response = await api.get('/transactions/risk/medium');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching medium risk transactions:', error);
-    throw error;
-  }
-};
-
-// ✅ GET transactions by account number
-export const getTransactionsByAccount = async (accountNumber) => {
-  try {
-    const response = await api.get(`/transactions/account/${accountNumber}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching transactions by account:', error);
-    throw error;
-  }
-};
-
-// ✅ GET statistics
-export const getTransactionStats = async () => {
-  try {
-    const response = await api.get('/transactions/stats');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching stats:', error);
-    throw error;
-  }
-};
-
-// ✅ POST new transaction (single) - FIXED PATH
-export const createTransaction = async (transactionData) => {
-  try {
-    const response = await api.post('/transactions', transactionData);
-    return response.data;
-  } catch (error) {
-    console.error('Error creating transaction:', error);
-    throw error;
-  }
-};
-
-// ✅ DELETE transaction
-export const deleteTransaction = async (id) => {
-  try {
-    const response = await api.delete(`/transactions/${id}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error deleting transaction:', error);
-    throw error;
-  }
-};
-
-// ✅ HEALTH CHECK
-export const healthCheck = async () => {
-  try {
-    const response = await api.get('/health');
-    return response.data;
-  } catch (error) {
-    console.error('Health check failed:', error);
-    throw error;
-  }
-};
-
-// ✅ GET metrics summary
-export const getMetricsSummary = async () => {
+// ✅ GET dashboard metrics (SOURCE OF TRUTH)
+export const getDashboardMetrics = async () => {
   try {
     const response = await api.get('/metrics/summary');
     return response.data;
   } catch (error) {
-    console.error('Error fetching metrics summary:', error);
+    console.error('Error fetching dashboard metrics:', error);
     throw error;
   }
 };
 
-// ✅ GET rule breakdown
-export const getRuleBreakdown = async () => {
-  try {
-    const response = await api.get('/metrics/rule-breakdown');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching rule breakdown:', error);
-    throw error;
-  }
+/**
+ * Get single transaction by ID
+ */
+export const getTransactionById = async (id) => {
+  const response = await api.get(`/transactions/${id}`);
+  return response.data;
 };
 
-// ✅ GET system effectiveness
-export const getSystemEffectiveness = async () => {
-  try {
-    const response = await api.get('/metrics/effectiveness');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching system effectiveness:', error);
-    throw error;
-  }
+/**
+ * Create a new transaction
+ * Fraud detection happens server-side
+ */
+export const createTransaction = async (transactionData) => {
+  const response = await api.post("/transactions", transactionData);
+  return response.data;
 };
 
-// ✅ GET risk distribution
-export const getRiskDistribution = async () => {
-  try {
-    const response = await api.get('/metrics/risk-distribution');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching risk distribution:', error);
-    throw error;
-  }
+/**
+ * Delete a transaction (optional – admin/testing only)
+ */
+export const deleteTransaction = async (id) => {
+  const response = await api.delete(`/transactions/${id}`);
+  return response.data;
 };
 
-// ✅ GET time-based analysis
-export const getTimeAnalysis = async (period = '7days') => {
-  try {
-    const response = await api.get(`/metrics/time-analysis?period=${period}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching time analysis:', error);
-    throw error;
-  }
-};
+/**
+ * =====================================================
+ * DASHBOARD METRICS (SINGLE SOURCE OF TRUTH)
+ * =====================================================
 
-// ✅ GET performance metrics
-export const getPerformanceMetrics = async () => {
-  try {
-    const response = await api.get('/metrics/performance');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching performance metrics:', error);
-    throw error;
-  }
-};
 
-// ✅ POST run fraud scenarios
-export const runFraudScenarios = async () => {
-  try {
-    const response = await api.post('/scenarios/run-all');
-    return response.data;
-  } catch (error) {
-    console.error('Error running fraud scenarios:', error);
-    throw error;
-  }
-};
+/**
+ * =====================================================
+ * HEALTH CHECK (OPTIONAL)
+ * =====================================================
+ */
 
-// ✅ GET scenario test results
-export const getScenarioResults = async () => {
-  try {
-    const response = await api.get('/scenarios/results');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching scenario results:', error);
-    throw error;
-  }
-};
-
-// ✅ GET notifications
-export const getNotifications = async () => {
-  try {
-    const response = await api.get('/notifications');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching notifications:', error);
-    throw error;
-  }
-};
-
-// ✅ POST mark notifications as read
-export const markNotificationsAsRead = async () => {
-  try {
-    const response = await api.post('/notifications/mark-read');
-    return response.data;
-  } catch (error) {
-    console.error('Error marking notifications as read:', error);
-    throw error;
-  }
+export const healthCheck = async () => {
+  const response = await api.get("/health");
+  return response.data;
 };
 
 export default api;

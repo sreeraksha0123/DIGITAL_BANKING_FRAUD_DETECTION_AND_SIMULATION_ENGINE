@@ -354,45 +354,45 @@ graph TD
 ### **1. Fraud Detection Service**
 - **Purpose**: Orchestrates the entire fraud detection process
 - **Key Responsibilities**:
-  - Receive and validate transaction data
-  - Coordinate between rule engine and ML model
-  - Calculate final risk score
-  - Make approval/rejection decisions
-  - Trigger notifications and alerts
+    - Receive and validate transaction data
+    - Coordinate between rule engine and ML model
+    - Calculate final risk score
+    - Make approval/rejection decisions
+    - Trigger notifications and alerts
 - **Processing Time**: < 50ms per transaction
 
 ### **2. Rule Engine**
 - **Purpose**: Applies predefined fraud detection rules
 - **Key Rules**:
-  1. **Amount Threshold Rule**: Flags unusually large transactions
-  2. **Location Risk Rule**: Detects transactions from suspicious locations
-  3. **Velocity Rule**: Identifies rapid transaction patterns
-  4. **Time Analysis Rule**: Flags unusual transaction times
-  5. **Behavioral Pattern Rule**: Compares against user's historical behavior
+    1. **Amount Threshold Rule**: Flags unusually large transactions
+    2. **Location Risk Rule**: Detects transactions from suspicious locations
+    3. **Velocity Rule**: Identifies rapid transaction patterns
+    4. **Time Analysis Rule**: Flags unusual transaction times
+    5. **Behavioral Pattern Rule**: Compares against user's historical behavior
 - **Output**: Risk score (0-100) based on rule violations
 
 ### **3. Machine Learning Service**
 - **Purpose**: Enhances detection with predictive analytics
 - **Features Used**:
-  - Transaction patterns
-  - User behavior history
-  - Geographic anomalies
-  - Temporal patterns
+    - Transaction patterns
+    - User behavior history
+    - Geographic anomalies
+    - Temporal patterns
 - **Model Types**:
-  - Classification model (fraud/not fraud)
-  - Anomaly detection model
-  - Risk scoring model
+    - Classification model (fraud/not fraud)
+    - Anomaly detection model
+    - Risk scoring model
 
 ### **4. Notification Service**
 - **Purpose**: Manages real-time alerts and notifications
 - **Notification Types**:
-  - **High-risk alerts**: Immediate notification with sound
-  - **Daily summaries**: Batch notifications for review
-  - **System alerts**: Service health and performance
+    - **High-risk alerts**: Immediate notification with sound
+    - **Daily summaries**: Batch notifications for review
+    - **System alerts**: Service health and performance
 - **Delivery Channels**:
-  - Dashboard notifications
-  - Email alerts (configurable)
-  - Audit logs
+    - Dashboard notifications
+    - Email alerts (configurable)
+    - Audit logs
 
 ---
 
@@ -418,51 +418,6 @@ graph TD
 - **Caching Layer**: Redis for frequent queries
 - **Load Balancing**: Round-robin distribution of requests
 - **Async Processing**: Non-blocking I/O operations
-
----
-
-## 🔄 **Deployment Architecture**
-
-```mermaid
-graph TB
-    subgraph "Production Environment"
-        LB[Load Balancer] --> B1[Backend Instance 1]
-        LB --> B2[Backend Instance 2]
-        LB --> B3[Backend Instance n]
-        
-        B1 --> DB[(MySQL Cluster)]
-        B2 --> DB
-        B3 --> DB
-        
-        B1 --> Cache[(Redis Cache)]
-        B2 --> Cache
-        B3 --> Cache
-        
-        B1 --> FS[(File Storage)]
-        
-        subgraph "Frontend Deployment"
-            CDN[CDN] --> F1[Frontend Instance 1]
-            CDN --> F2[Frontend Instance 2]
-        end
-        
-        F1 --> LB
-        F2 --> LB
-    end
-    
-    subgraph "Monitoring Stack"
-        Prom[Prometheus] --> Graf[Grafana]
-        ELK[ELK Stack] --> Kib[Kibana]
-    end
-    
-    B1 --> Prom
-    B2 --> Prom
-    DB --> Prom
-    B1 --> ELK
-    
-    style LB fill:#bbdefb,stroke:#1976d2
-    style B1 fill:#c8e6c9,stroke:#388e3c
-    style DB fill:#ffecb3,stroke:#ffa000
-```
 
 ---
 
@@ -541,10 +496,10 @@ graph TB
 
 ### **Data Flow Example**
 1. **Transaction Received**: User makes a $10,000 withdrawal
-2. **Rule Analysis**: 
-   - Amount check: Medium risk (+20)
-   - Time check: Night time (+15)
-   - Location check: New city (+25)
+2. **Rule Analysis**:
+    - Amount check: Medium risk (+20)
+    - Time check: Night time (+15)
+    - Location check: New city (+25)
 3. **ML Analysis**: Predicts 65% fraud probability
 4. **Final Score**: 60+ (HIGH RISK)
 5. **Action**: Transaction blocked, notification sent
@@ -555,28 +510,28 @@ graph TB
 
 ### **1. Real-time Fraud Prevention**
 - **Scenario**: Customer makes large withdrawal from unusual location
-- **System Action**: 
-  - Analyzes transaction in real-time
-  - Flags as high-risk
-  - Blocks transaction
-  - Sends alert to security team
-  - Notifies customer
+- **System Action**:
+    - Analyzes transaction in real-time
+    - Flags as high-risk
+    - Blocks transaction
+    - Sends alert to security team
+    - Notifies customer
 
 ### **2. Behavioral Analysis**
 - **Scenario**: Customer's spending pattern changes suddenly
 - **System Action**:
-  - Compares against historical data
-  - Detects anomaly
-  - Flags for review
-  - Updates risk profile
+    - Compares against historical data
+    - Detects anomaly
+    - Flags for review
+    - Updates risk profile
 
 ### **3. Batch Processing**
 - **Scenario**: End-of-day transaction analysis
 - **System Action**:
-  - Processes all daily transactions
-  - Generates fraud report
-  - Updates ML models
-  - Sends summary to management
+    - Processes all daily transactions
+    - Generates fraud report
+    - Updates ML models
+    - Sends summary to management
 
 ---
 
@@ -620,7 +575,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👨‍💻 **Author**
 
-**Sree Raksha S P**  
+**Sree Raksha S P**
 - 🔗 [LinkedIn](https://www.linkedin.com/in/sreeraksha0123/)
 - 🐙 [GitHub](https://github.com/sreeraksha0123)
 - 🧑‍💻 [LeetCode](https://leetcode.com/u/sreeraksha0123/)

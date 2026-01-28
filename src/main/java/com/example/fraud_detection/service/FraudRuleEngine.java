@@ -1,197 +1,211 @@
 package com.example.fraud_detection.service;
 
-import com.example.fraud_detection.config.FraudRulesConfig;
+import com.example.fraud_detection.dto.FraudDetectionResult;
 import com.example.fraud_detection.entity.Transaction;
-import com.example.fraud_detection.repository.TransactionRepository;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
-@Component
+/**
+ * Rule-based fraud detection engine with continuous scoring.
+ *
+ * CRITICAL: Scores are continuous (0-100), NOT categorical.
+ * This ensures realistic distributions matching actual banking patterns.
+ */
+@Service
 public class FraudRuleEngine {
 
-    private final TransactionRepository transactionRepository;
-    private final FraudRulesConfig rulesConfig;
+    public FraudDetectionResult evaluate(Transaction tx) {
 
-    public FraudRuleEngine(TransactionRepository transactionRepository,
-                           FraudRulesConfig rulesConfig) {
-        this.transactionRepository = transactionRepository;
-        this.rulesConfig = rulesConfig;
-    }
-
-    public int calculateFraudScore(Transaction transaction) {
-        int fraudScore = 0;
+        double score = 0;
         StringBuilder reason = new StringBuilder();
-        String fraudType = "";
 
-        // Rule 1: Amount-based rules
-        if (transaction.getAmount() != null) {
-            if (transaction.getAmount() > rulesConfig.getVeryHighAmountThreshold()) {
-                fraudScore += rulesConfig.getVeryHighAmountScore();
-                reason.append("Very high amount (").append(transaction.getAmount()).append("); ");
-                fraudType = addFraudType(fraudType, "AMOUNT_ABUSE");
-            } else if (transaction.getAmount() > rulesConfig.getHighAmountThreshold()) {
-                fraudScore += rulesConfig.getHighAmountScore();
-                reason.append("High amount (").append(transaction.getAmount()).append("); ");
-                fraudType = addFraudType(fraudType, "AMOUNT_ABUSE");
-            }
+        // ================================================================
+        // RULE 1: AMOUNT ANALYSIS (0-25 points)
+        // ================================================================
+        double amountScore = evaluateAmount(tx.getAmount());
+        score += amountScore;
+        if (amountScore > 0) {
+            reason.append("Amount risk: ").append(String.format("%.1f", amountScore)).append("; ");
         }
 
-        // Rule 2: Transaction type
-        if ("WITHDRAW".equalsIgnoreCase(transaction.getTransactionType())) {
-            fraudScore += rulesConfig.getWithdrawalScore();
-            reason.append("Withdrawal transaction; ");
-            fraudType = addFraudType(fraudType, "WITHDRAWAL_RISK");
+        // ================================================================
+        // RULE 2: TRANSACTION TYPE (0-20 points)
+        // ================================================================
+        double typeScore = evaluateTransactionType(tx.getTransactionType());
+        score += typeScore;
+        if (typeScore > 0) {
+            reason.append("Type risk: ").append(String.format("%.1f", typeScore)).append("; ");
         }
 
-        // Rule 3: Failed transactions
-        if (Boolean.FALSE.equals(transaction.getSuccessStatus())) {
-            fraudScore += rulesConfig.getFailedTransactionScore();
-            reason.append("Failed transaction; ");
-            fraudType = addFraudType(fraudType, "FAILED_TX_PATTERN");
+        // ================================================================
+        // RULE 3: LOCATION RISK (0-15 points)
+        // ================================================================
+        double locationScore = evaluateLocation(tx.getCountry(), tx.getCity());
+        score += locationScore;
+        if (locationScore > 0) {
+            reason.append("Location risk: ").append(String.format("%.1f", locationScore)).append("; ");
         }
 
-        // Rule 4: Location-based rules
-        if (transaction.getLocation() != null) {
-            String location = transaction.getLocation().toLowerCase();
-            if (location.contains("unknown") || location.contains("tor") ||
-                    location.contains("proxy") || location.contains("vpn")) {
-                fraudScore += rulesConfig.getSuspiciousLocationScore();
-                reason.append("Suspicious location (").append(transaction.getLocation()).append("); ");
-                fraudType = addFraudType(fraudType, "LOCATION_RISK");
-            }
+        // ================================================================
+        // RULE 4: TIMING PATTERNS (0-10 points)
+        // ================================================================
+        double timingScore = evaluateTiming(tx.getIsNightTime());
+        score += timingScore;
+        if (timingScore > 0) {
+            reason.append("Timing risk: ").append(String.format("%.1f", timingScore)).append("; ");
         }
 
-        // Rule 5: Time-based rules
-        if (Boolean.TRUE.equals(transaction.getIsNightTime())) {
-            fraudScore += rulesConfig.getNightTimeScore();
-            reason.append("Night time transaction; ");
-            fraudType = addFraudType(fraudType, "TIMING_RISK");
+        // ================================================================
+        // RULE 5: TRANSACTION VELOCITY (0-15 points)
+        // ================================================================
+        double velocityScore = evaluateVelocity(tx.getTransactionCountLastHour());
+        score += velocityScore;
+        if (velocityScore > 0) {
+            reason.append("Velocity risk: ").append(String.format("%.1f", velocityScore)).append("; ");
         }
 
-        // Rule 6: Velocity checking (multiple transactions in short time)
-        if (transaction.getAccountNumber() != null && transaction.getTransactionTime() != null) {
-            LocalDateTime oneHourAgo = transaction.getTransactionTime().minusHours(1);
-            List<Transaction> recentTransactions = transactionRepository
-                    .findByAccountNumberAndTransactionTimeAfter(
-                            transaction.getAccountNumber(), oneHourAgo);
-
-            if (recentTransactions.size() > rulesConfig.getMaxTransactionsPerHour()) {
-                fraudScore += rulesConfig.getVelocityScore();
-                reason.append("High velocity - ")
-                        .append(recentTransactions.size())
-                        .append(" transactions in last hour; ");
-                fraudType = addFraudType(fraudType, "VELOCITY_RISK");
-            }
-
-            // Calculate average and check for anomaly
-            double avgAmount = recentTransactions.stream()
-                    .mapToDouble(t -> t.getAmount() != null ? t.getAmount() : 0)
-                    .average()
-                    .orElse(0.0);
-
-            if (transaction.getAmount() != null &&
-                    transaction.getAmount() > avgAmount * rulesConfig.getVelocityThresholdMultiplier()) {
-                fraudScore += 15;
-                reason.append("Amount significantly higher than average; ");
-                fraudType = addFraudType(fraudType, "AMOUNT_ANOMALY");
-            }
+        // ================================================================
+        // RULE 6: LOCATION ANOMALY (0-15 points)
+        // ================================================================
+        double anomalyScore = evaluateLocationAnomaly(tx.getIsUnusualLocation());
+        score += anomalyScore;
+        if (anomalyScore > 0) {
+            reason.append("Anomaly risk: ").append(String.format("%.1f", anomalyScore)).append("; ");
         }
 
-        // Rule 7: Device/IP mismatch
-        if (transaction.getUserId() != null && transaction.getDeviceId() != null) {
-            // In real system, you would check against user's known devices
-            List<Transaction> userTransactions = transactionRepository
-                    .findByUserId(transaction.getUserId());
+        // Ensure score stays within 0-100
+        score = Math.min(score, 100);
+        score = Math.max(score, 0);
 
-            boolean knownDevice = userTransactions.stream()
-                    .anyMatch(t -> transaction.getDeviceId().equals(t.getDeviceId()));
-
-            if (!knownDevice && userTransactions.size() > 5) {
-                fraudScore += rulesConfig.getDeviceMismatchScore();
-                reason.append("New/unrecognized device; ");
-                fraudType = addFraudType(fraudType, "DEVICE_RISK");
-            }
+        // ================================================================
+        // DECISION LOGIC (continuous, not categorical)
+        // ================================================================
+        if (score >= 60) {
+            return FraudDetectionResult.highRisk((int) score, reason.toString(), "RULE_ENGINE");
+        } else if (score >= 30) {
+            return FraudDetectionResult.mediumRisk((int) score, reason.toString(), "RULE_ENGINE");
         }
 
-        // Rule 8: IP Address analysis
-        if (transaction.getIpAddress() != null) {
-            // Check for suspicious IP patterns
-            if (isSuspiciousIp(transaction.getIpAddress())) {
-                fraudScore += rulesConfig.getIpMismatchScore();
-                reason.append("Suspicious IP address; ");
-                fraudType = addFraudType(fraudType, "IP_RISK");
-            }
-
-            // Check IP-country mismatch
-            if (transaction.getCountry() != null &&
-                    !isIpFromCountry(transaction.getIpAddress(), transaction.getCountry())) {
-                fraudScore += 15;
-                reason.append("IP-country mismatch; ");
-                fraudType = addFraudType(fraudType, "GEO_MISMATCH");
-            }
-        }
-
-        // Set the results
-        transaction.setFraudScore(fraudScore);
-        transaction.setFraudType(fraudType.isEmpty() ? "NONE" : fraudType);
-        transaction.setFraudReason(reason.length() > 0 ?
-                reason.toString() : "Transaction appears normal");
-
-        return fraudScore;
+        return FraudDetectionResult.legitimate();
     }
 
-    private String addFraudType(String current, String newType) {
-        if (current == null || current.isEmpty()) {
-            return newType;
+    // ================================================================
+    // RULE EVALUATION METHODS (continuous scoring)
+    // ================================================================
+
+    /**
+     * Amount-based risk scoring (0-25 points).
+     * Uses bell curve: normal amounts low risk, extreme amounts high risk.
+     */
+    private double evaluateAmount(Double amount) {
+        if (amount == null) return 0;
+
+        if (amount > 200000) {
+            return 25; // Extreme
+        } else if (amount > 100000) {
+            return 20; // Very high
+        } else if (amount > 50000) {
+            return 15; // High
+        } else if (amount > 20000) {
+            return 10; // Moderate-high
+        } else if (amount > 10000) {
+            return 5; // Slight elevation
+        } else if (amount > 5000) {
+            return 2; // Minimal
         }
-        if (!current.contains(newType)) {
-            return current + "," + newType;
-        }
-        return current;
+        return 0; // Normal range
     }
 
-    private boolean isSuspiciousIp(String ipAddress) {
-        // Simplified check - in production, use IP reputation service
-        return ipAddress.startsWith("192.168.") ||
-                ipAddress.startsWith("10.") ||
-                ipAddress.contains(":") || // IPv6
-                ipAddress.equals("127.0.0.1") ||
-                ipAddress.matches(".*\\.(tor|proxy|vpn)\\..*");
-    }
+    /**
+     * Transaction type risk scoring (0-20 points).
+     * Different transaction types have different fraud profiles.
+     */
+    private double evaluateTransactionType(String type) {
+        if (type == null) return 0;
 
-    // Add this method to FraudRuleEngine class if missing:
-    public List<Transaction> findByAccountNumberAndTransactionTimeAfter(String accountNumber, LocalDateTime time) {
-        return transactionRepository.findByAccountNumberAndTransactionTimeAfter(accountNumber, time);
-    }
-
-    private boolean isIpFromCountry(String ipAddress, String country) {
-        // In production, use GeoIP service
-        // This is a simplified implementation
-        return true; // Assume match for now
-    }
-
-    public String determineRiskLevel(int fraudScore) {
-        if (fraudScore >= rulesConfig.getHighRiskThreshold()) {
-            return "HIGH";
-        } else if (fraudScore >= rulesConfig.getMediumRiskThreshold()) {
-            return "MEDIUM";
-        } else {
-            return "LOW";
-        }
-    }
-
-    public String getRecommendation(int fraudScore, String riskLevel) {
-        switch (riskLevel) {
-            case "HIGH":
-                return "BLOCK: Transaction requires manual review. Notify security team.";
-            case "MEDIUM":
-                return "REVIEW: Transaction suspicious. Request additional verification.";
-            case "LOW":
-                return "ALLOW: Transaction appears legitimate. Monitor for patterns.";
+        switch (type.toUpperCase()) {
+            case "INTERNATIONAL":
+                return 20; // Highest risk for type
+            case "TRANSFER":
+                return 12; // Moderate-high risk
+            case "ONLINE":
+                return 8; // Moderate risk
+            case "CARD":
+                return 3; // Lower risk but not zero
             default:
-                return "ALLOW: Proceed with transaction.";
+                return 0;
         }
+    }
+
+    /**
+     * Location risk scoring (0-15 points).
+     * Certain countries are higher risk based on fraud statistics.
+     */
+    private double evaluateLocation(String country, String city) {
+        if (country == null) return 0;
+
+        String countryUpper = country.toUpperCase();
+
+        // High-risk countries (common fraud sources)
+        if (countryUpper.contains("RUSSIA") || countryUpper.contains("CHINA") ||
+                countryUpper.contains("NIGERIA") || countryUpper.contains("PAKISTAN") ||
+                countryUpper.contains("PHILIPPINES") || countryUpper.contains("INDIA")) {
+            return 15;
+        }
+
+        // Medium-risk countries
+        if (countryUpper.contains("BRAZIL") || countryUpper.contains("TURKEY") ||
+                countryUpper.contains("INDONESIA") || countryUpper.contains("THAILAND")) {
+            return 10;
+        }
+
+        // Low-risk countries (USA, Canada, UK, etc.)
+        if (countryUpper.contains("USA") || countryUpper.contains("CANADA") ||
+                countryUpper.contains("UK") || countryUpper.contains("UNITED KINGDOM")) {
+            return 1;
+        }
+
+        // Default: neutral
+        return 5;
+    }
+
+    /**
+     * Timing pattern risk scoring (0-10 points).
+     * Night transactions have higher fraud likelihood.
+     */
+    private double evaluateTiming(Boolean isNightTime) {
+        if (Boolean.TRUE.equals(isNightTime)) {
+            return 10; // Night transactions are suspicious
+        }
+        return 0;
+    }
+
+    /**
+     * Velocity-based risk scoring (0-15 points).
+     * Multiple transactions in short time indicates potential attack.
+     */
+    private double evaluateVelocity(Integer transactionCountLastHour) {
+        if (transactionCountLastHour == null) return 0;
+
+        if (transactionCountLastHour > 10) {
+            return 15; // Extreme velocity
+        } else if (transactionCountLastHour > 7) {
+            return 12; // High velocity
+        } else if (transactionCountLastHour > 5) {
+            return 10; // Moderate-high velocity
+        } else if (transactionCountLastHour > 3) {
+            return 5; // Slight elevation
+        }
+        return 0;
+    }
+
+    /**
+     * Location anomaly risk scoring (0-15 points).
+     * Unusual locations (impossible travel, new device location) flag fraud.
+     */
+    private double evaluateLocationAnomaly(Boolean isUnusualLocation) {
+        if (Boolean.TRUE.equals(isUnusualLocation)) {
+            return 15; // Strong signal
+        }
+        return 0;
     }
 }

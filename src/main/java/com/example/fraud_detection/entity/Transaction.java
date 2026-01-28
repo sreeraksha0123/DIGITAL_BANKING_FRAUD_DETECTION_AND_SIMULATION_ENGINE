@@ -11,12 +11,10 @@ public class Transaction {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // ================= FRAUD EVALUATION =================
-    private Integer fraudScore;
-    private String riskLevel;      // LOW, MEDIUM, HIGH
-    private String fraudType;
+    // =====================================================
+    // CORE TRANSACTION DATA
+    // =====================================================
 
-    // ================= TRANSACTION DETAILS =================
     private String accountNumber;
     private Double amount;
     private String currency;
@@ -25,39 +23,64 @@ public class Transaction {
     private String deviceId;
     private String ipAddress;
 
-    // ================= LOCATION DETAILS =================
     private String location;
     private String country;
     private String city;
 
-    // ================= TIMING DETAILS =================
     private LocalDateTime transactionTime;
     private LocalDateTime createdAt;
-    private Boolean isNightTime;
 
-    // ================= BEHAVIORAL DETAILS =================
-    private Boolean successStatus;
-    private Integer transactionCountLastHour;
-    private Double averageTransactionAmount;
-    private Boolean isUnusualLocation;
+    // =====================================================
+    // FRAUD DECISION (FINAL, APPLIED ONCE)
+    // =====================================================
 
-    // ================= FRAUD RESULT =================
+    private Integer fraudScore;
+
+    /**
+     * LOW | MEDIUM | HIGH
+     */
+    private String riskLevel;
+
+    /**
+     * true  -> fraudulent (MEDIUM or HIGH)
+     * false -> legitimate
+     */
     private Boolean isFraud;
+
     private String fraudReason;
+    private String fraudType;
 
-    // ================= USER DETAILS =================
-    private Integer userId;
-    private String userBehaviorScore;
+    // =====================================================
+    // APPROVAL OUTCOME (DERIVED FROM RISK LEVEL)
+    // =====================================================
 
-    // ================= APPROVAL STATUS =================
-    // APPROVED | PENDING | BLOCKED
+    /**
+     * APPROVED | PENDING | BLOCKED
+     */
     private String approvalStatus;
 
-    // true = approved, false = blocked, null = pending
+    /**
+     * true  -> approved
+     * false -> blocked
+     * null  -> pending/manual review
+     */
     private Boolean transactionApproved;
 
     // =====================================================
-    // LIFECYCLE CALLBACKS
+    // ANALYTICS / BEHAVIORAL SIGNALS (OPTIONAL)
+    // =====================================================
+
+    private Boolean successStatus;
+    private Boolean isNightTime;
+    private Boolean isUnusualLocation;
+    private Integer transactionCountLastHour;
+    private Double averageTransactionAmount;
+
+    private Integer userId;
+    private String userBehaviorScore;
+
+    // =====================================================
+    // LIFECYCLE CALLBACKS (NO BUSINESS LOGIC)
     // =====================================================
 
     @PrePersist
@@ -72,86 +95,73 @@ public class Transaction {
             transactionTime = now;
         }
 
-        if (fraudScore == null) {
-            fraudScore = 0;
-        }
-
-        if (riskLevel == null) {
-            riskLevel = "LOW";
-        }
-
-        if (isFraud == null) {
-            isFraud = false;
-        }
-
-        if (fraudReason == null) {
-            fraudReason = "Transaction appears normal";
-        }
-
-        isNightTime = transactionTime.getHour() >= 22 || transactionTime.getHour() <= 6;
-
-        // FINAL authoritative approval mapping
-        applyApprovalFromRisk();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        applyApprovalFromRisk();
+        // Derived flag ONLY (safe)
+        this.isNightTime =
+                transactionTime.getHour() >= 22 || transactionTime.getHour() <= 6;
     }
 
     // =====================================================
-    // CORE BUSINESS LOGIC
+    // APPLY FINAL FRAUD DECISION (SINGLE ENTRY POINT)
     // =====================================================
 
+    /**
+     * This method MUST be called exactly once
+     * after fraud detection is complete.
+     */
+    public void applyFraudDecision(
+            Integer fraudScore,
+            String riskLevel,
+            Boolean isFraud,
+            String fraudReason,
+            String fraudType
+    ) {
+        this.fraudScore = fraudScore;
+        this.riskLevel = riskLevel;
+        this.isFraud = isFraud;
+        this.fraudReason = fraudReason;
+        this.fraudType = fraudType;
+
+        applyApprovalFromRisk();
+    }
+
+    /**
+     * Approval mapping is deterministic and simple.
+     * NO fraud logic here.
+     */
     private void applyApprovalFromRisk() {
         if (riskLevel == null) {
-            riskLevel = "LOW";
+            this.approvalStatus = "PENDING";
+            this.transactionApproved = null;
+            return;
         }
 
         switch (riskLevel) {
             case "LOW":
-                approvalStatus = "APPROVED";
-                transactionApproved = true;
-                isFraud = false;
+                this.approvalStatus = "APPROVED";
+                this.transactionApproved = true;
                 break;
 
             case "MEDIUM":
-                approvalStatus = "PENDING";
-                transactionApproved = null;
-                isFraud = true;
+                this.approvalStatus = "PENDING";
+                this.transactionApproved = null;
                 break;
 
             case "HIGH":
-                approvalStatus = "BLOCKED";
-                transactionApproved = false;
-                isFraud = true;
+                this.approvalStatus = "BLOCKED";
+                this.transactionApproved = false;
                 break;
 
             default:
-                approvalStatus = "PENDING";
-                transactionApproved = null;
-                isFraud = true;
+                this.approvalStatus = "PENDING";
+                this.transactionApproved = null;
         }
     }
 
     // =====================================================
-    // GETTERS & SETTERS
+    // GETTERS & SETTERS (NO SIDE EFFECTS)
     // =====================================================
 
     public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-
-    public Integer getFraudScore() { return fraudScore; }
-    public void setFraudScore(Integer fraudScore) { this.fraudScore = fraudScore; }
-
-    public String getRiskLevel() { return riskLevel; }
-    public void setRiskLevel(String riskLevel) {
-        this.riskLevel = riskLevel;
-        applyApprovalFromRisk();
-    }
-
-    public String getFraudType() { return fraudType; }
-    public void setFraudType(String fraudType) { this.fraudType = fraudType; }
 
     public String getAccountNumber() { return accountNumber; }
     public void setAccountNumber(String accountNumber) { this.accountNumber = accountNumber; }
@@ -187,13 +197,23 @@ public class Transaction {
     public void setTransactionTime(LocalDateTime transactionTime) { this.transactionTime = transactionTime; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
-    public Boolean getIsNightTime() { return isNightTime; }
-    public void setIsNightTime(Boolean isNightTime) { this.isNightTime = isNightTime; }
+    public Integer getFraudScore() { return fraudScore; }
+    public String getRiskLevel() { return riskLevel; }
+    public Boolean getIsFraud() { return isFraud; }
+    public String getFraudReason() { return fraudReason; }
+    public String getFraudType() { return fraudType; }
+
+    public String getApprovalStatus() { return approvalStatus; }
+    public Boolean getTransactionApproved() { return transactionApproved; }
 
     public Boolean getSuccessStatus() { return successStatus; }
     public void setSuccessStatus(Boolean successStatus) { this.successStatus = successStatus; }
+
+    public Boolean getIsNightTime() { return isNightTime; }
+
+    public Boolean getIsUnusualLocation() { return isUnusualLocation; }
+    public void setIsUnusualLocation(Boolean isUnusualLocation) { this.isUnusualLocation = isUnusualLocation; }
 
     public Integer getTransactionCountLastHour() { return transactionCountLastHour; }
     public void setTransactionCountLastHour(Integer transactionCountLastHour) {
@@ -205,17 +225,6 @@ public class Transaction {
         this.averageTransactionAmount = averageTransactionAmount;
     }
 
-    public Boolean getIsUnusualLocation() { return isUnusualLocation; }
-    public void setIsUnusualLocation(Boolean isUnusualLocation) {
-        this.isUnusualLocation = isUnusualLocation;
-    }
-
-    public Boolean getIsFraud() { return isFraud; }
-    public void setIsFraud(Boolean isFraud) { this.isFraud = isFraud; }
-
-    public String getFraudReason() { return fraudReason; }
-    public void setFraudReason(String fraudReason) { this.fraudReason = fraudReason; }
-
     public Integer getUserId() { return userId; }
     public void setUserId(Integer userId) { this.userId = userId; }
 
@@ -223,7 +232,4 @@ public class Transaction {
     public void setUserBehaviorScore(String userBehaviorScore) {
         this.userBehaviorScore = userBehaviorScore;
     }
-
-    public String getApprovalStatus() { return approvalStatus; }
-    public Boolean getTransactionApproved() { return transactionApproved; }
 }

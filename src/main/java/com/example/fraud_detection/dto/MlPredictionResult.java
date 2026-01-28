@@ -1,30 +1,44 @@
 package com.example.fraud_detection.dto;
 
+/**
+ * Output of the ML prediction step.
+ *
+ * This is a probabilistic signal only.
+ * It must NOT decide fraud or approval.
+ */
 public class MlPredictionResult {
 
-    private String prediction; // FRAUD / SAFE / UNKNOWN
-    private double probability;
+    /**
+     * Risk score from 0–100
+     */
+    private final int riskScore;
 
-    public MlPredictionResult() {}
+    /**
+     * Optional explanation of the signal
+     */
+    private final String explanation;
 
-    public MlPredictionResult(String prediction, double probability) {
-        this.prediction = prediction;
-        this.probability = probability;
+    public MlPredictionResult(int riskScore, String explanation) {
+        this.riskScore = riskScore;
+        this.explanation = explanation;
     }
 
-    public String getPrediction() {
-        return prediction;
+    /**
+     * Returns the ML risk score (0–100)
+     */
+    public int getRiskScore() {
+        return riskScore;
     }
 
-    public void setPrediction(String prediction) {
-        this.prediction = prediction;
+    public String getExplanation() {
+        return explanation;
     }
 
-    public double getProbability() {
-        return probability;
-    }
-
-    public void setProbability(double probability) {
-        this.probability = probability;
+    @Override
+    public String toString() {
+        return "MlPredictionResult{" +
+                "riskScore=" + riskScore +
+                ", explanation='" + explanation + '\'' +
+                '}';
     }
 }

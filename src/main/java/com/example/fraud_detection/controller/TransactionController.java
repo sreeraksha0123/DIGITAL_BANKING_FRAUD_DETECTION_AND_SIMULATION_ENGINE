@@ -7,12 +7,16 @@ import com.example.fraud_detection.repository.TransactionRepository;
 import com.example.fraud_detection.service.AdvancedFraudDetectionService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
+import java.util.Map;
+
 
 import java.util.List;
+import java.util.stream.Collectors;
 
-@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/v1/transactions")
+@CrossOrigin
 public class TransactionController {
 
     private final TransactionRepository transactionRepository;
@@ -26,70 +30,57 @@ public class TransactionController {
         this.fraudService = fraudService;
     }
 
-    // ================= CREATE TRANSACTION =================
+    // ============================
+    // CREATE TRANSACTION
+    // ============================
     @PostMapping
     public ResponseEntity<TransactionResponse> createTransaction(
             @RequestBody TransactionRequest request
     ) {
-        TransactionResponse response = fraudService.processTransaction(request);
-        return ResponseEntity.ok(response);
+        Transaction transaction = fraudService.processTransaction(request);
+        return ResponseEntity.ok(toResponse(transaction));
     }
 
-    // ================= GET ALL =================
+
+    // ============================
+    // GET ALL TRANSACTIONS
+    // ============================
     @GetMapping
-    public ResponseEntity<List<Transaction>> getAll() {
-        return ResponseEntity.ok(transactionRepository.findAll());
+    public List<TransactionResponse> getAllTransactions() {
+        return transactionRepository.findAll()
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
     }
 
-    // ================= GET BY ID =================
+    // ============================
+    // GET TRANSACTION BY ID
+    // ============================
     @GetMapping("/{id}")
-    public ResponseEntity<Transaction> getById(@PathVariable Long id) {
+    public ResponseEntity<TransactionResponse> getTransactionById(
+            @PathVariable Long id
+    ) {
         return transactionRepository.findById(id)
-                .map(ResponseEntity::ok)
+                .map(transaction -> ResponseEntity.ok(toResponse(transaction)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // ================= BY ACCOUNT =================
-    @GetMapping("/account/{accountNumber}")
-    public ResponseEntity<List<Transaction>> getByAccount(
-            @PathVariable String accountNumber
-    ) {
-        return ResponseEntity.ok(
-                transactionRepository.findByAccountNumber(accountNumber)
-        );
-    }
-
-    // ================= FRAUD ONLY =================
-    @GetMapping("/fraud")
-    public ResponseEntity<List<Transaction>> fraudOnly() {
-        return ResponseEntity.ok(
-                transactionRepository.findByIsFraudTrue()
-        );
-    }
-
-    // ================= HIGH RISK =================
-    @GetMapping("/risk/high")
-    public ResponseEntity<List<Transaction>> highRisk() {
-        return ResponseEntity.ok(
-                transactionRepository.findByRiskLevel("HIGH")
-        );
-    }
-
-    // ================= MEDIUM RISK =================
-    @GetMapping("/risk/medium")
-    public ResponseEntity<List<Transaction>> mediumRisk() {
-        return ResponseEntity.ok(
-                transactionRepository.findByRiskLevel("MEDIUM")
-        );
-    }
-
-    // ================= DELETE =================
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        if (!transactionRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
-        }
-        transactionRepository.deleteById(id);
-        return ResponseEntity.noContent().build();
+    // ============================
+    // ENTITY → DTO MAPPER
+    // ============================
+    private TransactionResponse toResponse(Transaction t) {
+        TransactionResponse r = new TransactionResponse();
+        r.setId(t.getId());
+        r.setAccountNumber(t.getAccountNumber());
+        r.setAmount(t.getAmount());
+        r.setCurrency(t.getCurrency());
+        r.setTransactionType(t.getTransactionType());
+        r.setRiskLevel(t.getRiskLevel());
+        r.setFraudScore(t.getFraudScore());
+        r.setFraud(t.getIsFraud());
+        r.setApprovalStatus(t.getApprovalStatus());
+        r.setTransactionTime(t.getTransactionTime());
+        r.setFraudReason(t.getFraudReason());
+        return r;
     }
 }
