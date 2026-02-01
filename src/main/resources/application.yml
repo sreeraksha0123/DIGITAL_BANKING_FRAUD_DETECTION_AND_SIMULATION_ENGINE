@@ -1,0 +1,51 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: digital-banking-fraud-detection
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/fraud_db
+    username: root
+    password: Raksha123@
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+# ------------------------------------
+# SECURITY (JWT)
+# ------------------------------------
+security:
+  jwt:
+    secret: INFOSYS_DIGITAL_BANKING_FRAUD_DETECTION_SECRET
+    expiration-ms: 3600000   # 1 hour
+
+# ------------------------------------
+# ML SERVICE CONFIG
+# ------------------------------------
+ml:
+  service:
+    url: http://localhost:5000/predict
+    timeout-ms: 2000
+
+# ------------------------------------
+# LOGGING
+# ------------------------------------
+logging:
+  level:
+    root: INFO
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql: TRACE

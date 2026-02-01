@@ -61,4 +61,4 @@ application-dev.properties
 # ===============================
 HELP.md
 # Hide application properties (secrets)
-src/main/resources/application.properties
+src/main/java/com/bank/fraud/resources/application.properties
