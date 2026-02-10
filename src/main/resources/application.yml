@@ -8,7 +8,7 @@ spring:
   datasource:
     url: jdbc:mysql://localhost:3306/fraud_db
     username: root
-    password: Raksha123@
+    password: -----
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
